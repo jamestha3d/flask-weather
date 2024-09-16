@@ -1,58 +1,47 @@
-from flask import Flask
-from flask_restx import Api
-from .orders.views import order_namespace
-from .auth.views import auth_namespace
-from .config.config import config_dict
+from flask import Flask, jsonify
+# from flask_restx import Api
+# from .views import city_namespace #order_namespace
+from config import config_dict
 from .utils import db
-from .models.orders import Order
-from .models.users import User
+from .models import City, WeatherRequestLog
 from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager
 from werkzeug.exceptions import NotFound, MethodNotAllowed
+from .views import CityView, CityListView, WeatherRequestView, HistoryView
+from flask_restful import Api as Router
 
-
-
+from .exceptions import APIException
 
 def create_app(config=config_dict['dev']):
     app=Flask(__name__)
-
     app.config.from_object(config)
 
-    authorizations = {
-        'Bearer Auth': {
-            'type': "apiKey",
-            'in': 'header',
-            'name': "Authorization",
-            'description': "Add a JWT with ** Bearer &lt;JWT&gt; to authorize"
-        }
-    }
-    api = Api(app, 
-              title="Weather App",
-              description="A REST API for a weather app",
-              authorizations = authorizations,
-              security="Bearer Auth")
+    router = Router(app)
 
-    api.add_namespace(order_namespace, path='')
-    api.add_namespace(auth_namespace, path='/auth')
+    router.add_resource(CityListView, '/cities')
+    router.add_resource(CityView, '/city/<int:city_id>')
+    router.add_resource(WeatherRequestView, '/weather/<int:city_id>')
+    router.add_resource(HistoryView, '/history')
+
     db.init_app(app)
 
-    jwt = JWTManager(app)
     migrate = Migrate(app, db)
-    
-    @api.errorhandler(NotFound)
-    def not_found(error):
-        return {"error": "Not found"}, 404
-    
-    @api.errorhandler(MethodNotAllowed)
-    def method_not_allowed(error):
-        return {"error": "Method not Allowed"}, 405
 
-    @app.shell_context_processor
+    @app.errorhandler(APIException)
+    def handle_invalid_usage(error):
+        response = jsonify(error.to_dict())
+        response.status_code = error.status_code
+        return response
+    
+    # @app.errorhandler(Exception)
+    # def handle_exception(error):
+    #     response = jsonify({"message": "Something went wrong!"})
+    #     return response
+    
     def make_shell_context():
         return {
             'db': db,
-            'User': User,
-            'Order': Order
+            'city': City,
+            'WeatherReport': WeatherRequestLog
         }
 
     return app

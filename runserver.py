@@ -1,9 +1,10 @@
 from api import create_app
-from api.config.config import config_dict
-
-
+from config import config_dict
+from api.views import CityView, CityListView, WeatherRequestView, HistoryView
+from flask_restful import Api
 
 app = create_app() #config=config_dict['production']
+
 
 if __name__ == "__main__":
     app.run()
@@ -17,12 +18,4 @@ if __name__ == "__main__":
 #test
 #pytest
 
-"""
-#import os
-#import re
-#uri = os.getenv('DATABASE_URL')
-if uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
-#  
-# 
-# """
+#flask shell
